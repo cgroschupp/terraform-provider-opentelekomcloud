@@ -22,14 +22,14 @@ func dataSourceDDSFlavorV3() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					"DDS-Community", "DDS-Enhanced",
+					"DDS-Community",
 				}, true),
 			},
 			"type": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					"mongos", "shard", "config", "replica", "single",
+					"mongos", "shard", "config", "replica",
 				}, true),
 			},
 			"vcpus": {
@@ -121,11 +121,11 @@ func dataSourceDDSFlavorV3Read(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func filterFlavor(item flavors.Flavor, flavorType, vcpus, memory string) bool {
+func filterFlavor(item flavors.Flavor, flavorType, vCpus, memory string) bool {
 	if flavorType != "" && flavorType != item.Type {
 		return true
 	}
-	if vcpus != "" && vcpus != item.Vcpus {
+	if vCpus != "" && vCpus != item.Vcpus {
 		return true
 	}
 	if memory != "" && memory != item.Ram {
