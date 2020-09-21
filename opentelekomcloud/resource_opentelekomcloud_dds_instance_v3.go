@@ -46,7 +46,7 @@ func resourceDdsInstanceV3() *schema.Resource {
 							Required: true,
 							ForceNew: true,
 							ValidateFunc: validation.StringInSlice([]string{
-								"DDS-Community", "DDS-Enhanced",
+								"DDS-Community",
 							}, true),
 						},
 						"version": {
@@ -54,7 +54,7 @@ func resourceDdsInstanceV3() *schema.Resource {
 							Required: true,
 							ForceNew: true,
 							ValidateFunc: validation.StringInSlice([]string{
-								"4.0", "3.4", "3.2",
+								"3.4", "3.2",
 							}, true),
 						},
 						"storage_engine": {
@@ -62,7 +62,7 @@ func resourceDdsInstanceV3() *schema.Resource {
 							Optional: true,
 							ForceNew: true,
 							ValidateFunc: validation.StringInSlice([]string{
-								"wiredTiger", "rocksDB",
+								"wiredTiger",
 							}, true),
 						},
 					},
@@ -102,7 +102,7 @@ func resourceDdsInstanceV3() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					"Sharding", "ReplicaSet", "Single",
+					"Sharding", "ReplicaSet",
 				}, true),
 			},
 			"flavor": {
@@ -116,7 +116,7 @@ func resourceDdsInstanceV3() *schema.Resource {
 							Required: true,
 							ForceNew: true,
 							ValidateFunc: validation.StringInSlice([]string{
-								"mongos", "shard", "config", "replica", "single",
+								"mongos", "shard", "config", "replica",
 							}, true),
 						},
 						"num": {
@@ -164,58 +164,9 @@ func resourceDdsInstanceV3() *schema.Resource {
 					},
 				},
 			},
-			"ssl": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-			},
-			"db_username": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"status": {
 				Type:     schema.TypeString,
 				Computed: true,
-			},
-			"port": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"nodes": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"type": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"role": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"private_ip": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"public_ip": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"status": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
 			},
 		},
 	}
@@ -301,7 +252,7 @@ func resourceDdsInstanceV3Create(d *schema.ResourceData, meta interface{}) error
 	config := meta.(*Config)
 	client, err := config.ddsV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmt.Errorf("Error creating HuaweiCloud DDS client: %s ", err)
+		return fmt.Errorf("Error creating OpenTelekomCloud DDS client: %s ", err)
 	}
 
 	createOpts := instances.CreateOpts{
@@ -317,9 +268,6 @@ func resourceDdsInstanceV3Create(d *schema.ResourceData, meta interface{}) error
 		Mode:             d.Get("mode").(string),
 		Flavor:           resourceDdsFlavors(d),
 		BackupStrategy:   resourceDdsBackupStrategy(d),
-	}
-	if ssl := d.Get("ssl").(bool); !ssl {
-		createOpts.Ssl = "0"
 	}
 	log.Printf("[DEBUG] Create Options: %#v", createOpts)
 
@@ -341,9 +289,7 @@ func resourceDdsInstanceV3Create(d *schema.ResourceData, meta interface{}) error
 
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return fmt.Errorf(
-			"Error waiting for instance (%s) to become ready: %s ",
-			instance.Id, err)
+		return fmt.Errorf("Error waiting for instance (%s) to become ready: %s ", instance.Id, err)
 	}
 
 	return resourceDdsInstanceV3Read(d, meta)
@@ -353,7 +299,7 @@ func resourceDdsInstanceV3Read(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*Config)
 	client, err := config.ddsV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmt.Errorf("Error creating HuaweiCloud DDS client: %s", err)
+		return fmt.Errorf("Error creating OpenTelekomCloud DDS client: %s", err)
 	}
 
 	instanceID := d.Id()
@@ -383,15 +329,7 @@ func resourceDdsInstanceV3Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("security_group_id", instance.SecurityGroupId)
 	d.Set("disk_encryption_id", instance.DiskEncryptionId)
 	d.Set("mode", instance.Mode)
-	d.Set("db_username", instance.DbUserName)
 	d.Set("status", instance.Status)
-	d.Set("port", instance.Port)
-
-	sslEnable := true
-	if instance.Ssl == 0 {
-		sslEnable = false
-	}
-	d.Set("ssl", sslEnable)
 
 	datastoreList := make([]map[string]interface{}, 0, 1)
 	datastore := map[string]interface{}{
@@ -410,12 +348,6 @@ func resourceDdsInstanceV3Read(d *schema.ResourceData, meta interface{}) error {
 	backupStrategyList = append(backupStrategyList, backupStrategy)
 	d.Set("backup_strategy", backupStrategyList)
 
-	// save nodes attribute
-	err = d.Set("nodes", flattenDdsInstanceV3Nodes(instance))
-	if err != nil {
-		return fmt.Errorf("Error setting nodes of DDS instance, err: %s", err)
-	}
-
 	return nil
 }
 
@@ -423,7 +355,7 @@ func resourceDdsInstanceV3Update(d *schema.ResourceData, meta interface{}) error
 	config := meta.(*Config)
 	client, err := config.ddsV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmt.Errorf("Error creating HuaweiCloud DDS client: %s ", err)
+		return fmt.Errorf("Error creating OpenTelekomCloud DDS client: %s ", err)
 	}
 
 	var opts []instances.UpdateOpt
@@ -443,20 +375,6 @@ func resourceDdsInstanceV3Update(d *schema.ResourceData, meta interface{}) error
 			Value:  d.Get("password").(string),
 			Action: "reset-password",
 			Method: "put",
-		}
-		opts = append(opts, opt)
-	}
-
-	if d.HasChange("ssl") {
-		opt := instances.UpdateOpt{
-			Param:  "ssl_option",
-			Action: "switch-ssl",
-			Method: "post",
-		}
-		if d.Get("ssl").(bool) {
-			opt.Value = "1"
-		} else {
-			opt.Value = "0"
 		}
 		opts = append(opts, opt)
 	}
@@ -487,9 +405,7 @@ func resourceDdsInstanceV3Update(d *schema.ResourceData, meta interface{}) error
 
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return fmt.Errorf(
-			"Error waiting for instance (%s) to become ready: %s ",
-			d.Id(), err)
+		return fmt.Errorf("Error waiting for instance (%s) to become ready: %s ", d.Id(), err)
 	}
 
 	return resourceDdsInstanceV3Read(d, meta)
@@ -499,7 +415,7 @@ func resourceDdsInstanceV3Delete(d *schema.ResourceData, meta interface{}) error
 	config := meta.(*Config)
 	client, err := config.ddsV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmt.Errorf("Error creating HuaweiCloud DDS client: %s ", err)
+		return fmt.Errorf("Error creating OpenTelekomCloud DDS client: %s ", err)
 	}
 
 	instanceId := d.Id()
@@ -524,24 +440,4 @@ func resourceDdsInstanceV3Delete(d *schema.ResourceData, meta interface{}) error
 	}
 	log.Printf("[DEBUG] Successfully deleted instance %s", instanceId)
 	return nil
-}
-
-func flattenDdsInstanceV3Nodes(dds instances.InstanceResponse) interface{} {
-	nodesList := make([]map[string]interface{}, 0)
-	for _, group := range dds.Groups {
-		groupType := group.Type
-		for _, Node := range group.Nodes {
-			node := map[string]interface{}{
-				"type":       groupType,
-				"id":         Node.Id,
-				"name":       Node.Name,
-				"role":       Node.Role,
-				"status":     Node.Status,
-				"private_ip": Node.PrivateIP,
-				"public_ip":  Node.PublicIP,
-			}
-			nodesList = append(nodesList, node)
-		}
-	}
-	return nodesList
 }

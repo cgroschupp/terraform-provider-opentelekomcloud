@@ -243,6 +243,7 @@ func Provider() terraform.ResourceProvider {
 			"opentelekomcloud_identity_group_v3":             dataSourceIdentityGroupV3(),
 			"opentelekomcloud_sdrs_domain_v1":                dataSourceSdrsDomainV1(),
 			"opentelekomcloud_vpnaas_service_v2":             dataSourceVpnServiceV2(),
+			"opentelekomcloud_dds_flavors_v3":                dataSourceDDSFlavorV3(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
@@ -363,6 +364,7 @@ func Provider() terraform.ResourceProvider {
 			"opentelekomcloud_vpnaas_site_connection_v2":          resourceVpnSiteConnectionV2(),
 			"opentelekomcloud_logtank_group_v2":                   resourceLTSGroupV2(),
 			"opentelekomcloud_logtank_topic_v2":                   resourceLTSTopicV2(),
+			"opentelekomcloud_dds_instance_v3":                    resourceDdsInstanceV3(),
 		},
 	}
 
